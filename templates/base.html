@@ -26,9 +26,11 @@
             <a class="nav-link active" aria-current="page" href="#">Home</a>
           </li>
           {% if session.get('user_id') %}
-          <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="/logout">Logout</a>
+          
+          <li class="nav-item y-2 my-lg-0 ">
+            <a class="nav-link active "  aria-current="page" href="/logout">Logout</a>
           </li>
+          
           {% endif %}
         </ul>
         {% if session.get('user_name') %}

@@ -35,7 +35,8 @@ def get_connection():
 
 @app.route("/submit", methods=["GET", "POST"])
 def submit():
-    if not session.get("user_id"):
+    uid = session.get("user_id")
+    if not uid:
         return redirect(url_for("login"))
     engine = get_connection()
     if request.method == 'POST':
@@ -46,7 +47,7 @@ def submit():
             current_time = datetime.now()
             formatted_time = current_time.strftime("%Y-%m-%dT%H:%M:%S")
             with engine.connect() as con:
-                rs = con.execute(text(f'INSERT INTO todoitem (categories, title, description, created, lastUpdated) values ("{categories}", "{todotitle}", "{description}", "{formatted_time}", "{formatted_time}");'))
+                rs = con.execute(text(f'INSERT INTO todoitem (categories, title, description, user_id, created, lastUpdated) values ("{categories}", "{todotitle}", "{description}", {uid}, "{formatted_time}", "{formatted_time}");'))
                 con.commit()
                 flash('Successfully submit data!', 'green')
         else:
@@ -59,29 +60,32 @@ def submit():
 def home():
     if not session.get("user_id"):
         return redirect(url_for("login"))
-        
-    category = request.args.get('category')
-    title = request.args.get('title')
-
-    if title or category:
-        engine = get_connection()
-        query = f"SELECT id,categories , title, description, created, lastUpdated FROM todoitem where title like '%{title}%' "
-        if category:
-            query += f" and categories='{category}' "
-        query += " order by id desc "
-        with engine.connect() as con:
-            con.commit()
-            rs = con.execute(text(query) )
-            row = rs.fetchall()
-            
     else:
-        title = ''
-        engine = get_connection()
-        with engine.connect() as con:
-            con.commit()
-            rs = con.execute(text("SELECT id,categories , title, description, created, lastUpdated FROM todoitem order by id desc") )
-        row = rs.fetchall()        
-    return render_template('index.html', todos=row ,title=title, category=category ) 
+        uid = session.get('user_id')
+        category = request.args.get('category')
+        title = request.args.get('title')
+
+        if title or category:
+            engine = get_connection()
+            query = f"SELECT id,categories , title, description, created, lastUpdated FROM todoitem where user_id = {uid} and title like '%{title}%' "
+            if category:
+                query += f" and categories='{category}' "
+            query += " order by id desc "
+            with engine.connect() as con:
+                con.commit()
+                rs = con.execute(text(query) )
+                row = rs.fetchall()
+            
+            
+        else:
+            title = ''
+            engine = get_connection()
+            with engine.connect() as con:
+                con.commit()
+                rs = con.execute(text(f"SELECT id,categories , title, description, created, lastUpdated FROM todoitem where user_id = {uid} order by id desc") )
+            row = rs.fetchall()
+              
+        return render_template('index.html', todos=row ,title=title, category=category ) 
 
 
 @app.route('/delete/<id>')
@@ -124,7 +128,7 @@ def updatesubmit():
             flash('Successfully updated data!', 'green')
     return redirect(url_for("home"))
            
-    
+  
 @app.route("/register" , methods=['GET', 'POST'])
 def register():
     engine = get_connection()
@@ -181,9 +185,11 @@ def login():
 
 @app.route("/logout" , methods=['GET', 'POST'])
 def logout():
-    session["name"] = None
-    return render_template('login.html')
+    
+    session.clear()
+    flash('Successfully logout Please login!', 'green')
+    return redirect(url_for('login'))
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+    app.run(debug=True, port=8001)
