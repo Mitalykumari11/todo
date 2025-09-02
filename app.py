@@ -74,9 +74,7 @@ def home():
             with engine.connect() as con:
                 con.commit()
                 rs = con.execute(text(query) )
-                row = rs.fetchall()
-            
-            
+                row = rs.fetchall()        
         else:
             title = ''
             engine = get_connection()
@@ -90,32 +88,44 @@ def home():
 
 @app.route('/delete/<id>')
 def delete(id):
-    if not session.get("user_id"):
+    uid = session.get("user_id")
+    if not uid:
         return redirect(url_for("login"))
     engine = get_connection()
     with engine.connect() as con:
-        rs = con.execute(text(f'delete from todoitem where id={id};'))
+        rs = con.execute(text(f'delete from todoitem where id={id} and user_id = {uid};'))
         con.commit()
-        flash('Successfully deleted', "yellow")
+        if rs.rowcount > 0:
+            flash('Successfully deleted', "yellow")
+        else:
+            flash('You are not authorized to delete data!' , 'red')
+        
     return redirect(url_for("home"))
 
 @app.route('/update/<id>', methods = ['GET', 'POST'])
 def update(id):
-    if not session.get("user_id"):
+    uid = session.get("user_id")
+    if not uid:
         return redirect(url_for("login"))
+    
     engine = get_connection()
     with engine.connect() as con:
             con.commit()
-            rs = con.execute(text(f"SELECT id, categories, title,  description FROM todoitem where id={id}") )
-    row = rs.fetchall()        
+            rs = con.execute(text(f"SELECT id, categories, title,  description , user_id FROM todoitem where id={id} and user_id = {uid}") )
+    row = rs.fetchall()
+    if not row:
+        flash('you are not updated')
+        redirect(url_for('home'))
    
     return render_template('update.html', todo=row[0])
 
 @app.route('/updateSubmit', methods=['GET', 'POST'])
 def updatesubmit():
-    if not session.get("user_id"):
+    uid = session.get("user_id")
+    if not uid:
         return redirect(url_for("login"))
     engine = get_connection()
+    
     if request.method == 'POST':
         id = request.form.get('id')
         todotitle = request.form.get('todotitle')
@@ -123,9 +133,13 @@ def updatesubmit():
         categories = request.form.get('categories')
         if todotitle and categories:
             with engine.connect() as con:
-                rs = con.execute(text(f'update todoitem set  categories = "{categories}", title = "{todotitle}", description = "{description}"  where id = {id}'))
+                rs = con.execute(text(f'update todoitem set  categories = "{categories}", title = "{todotitle}", description = "{description}"  where id = {id} and user_id = {uid}'))
                 con.commit()
-            flash('Successfully updated data!', 'green')
+            if rs.rowcount > 0:
+                flash('Successfully updated data!', 'green')
+            else:
+                flash('You are not authorized to update data!  ', 'red')
+            
     return redirect(url_for("home"))
            
   
