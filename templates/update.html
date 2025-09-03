@@ -29,18 +29,40 @@
       
 
     </select>
+     <label for="priority" class="form-label" id="priority">Priority</label>
+      <select class="w3-select" name="priority">
+
+       {% if todo[2]=='Low' %}
+       <option value="Low" style="text-transform: capitalize;" selected>Low</option>
+        {% else %}
+        <option value="Low">Low</option>
+        {% endif %}
+       
+        {% if  todo[2]=='Medium' %}
+        <option value="Medium" style="text-transform: capitalize;" selected>Medium</option>
+         {% else %}
+        <option value="Medium">Medium</option>
+        {% endif %}
+
+        {% if  todo[2]=='High' %}
+        <option value="High" style="text-transform: capitalize;" selected>High</option>
+        {% else %}
+        <option value="High">High</option>
+        {% endif %}
+
+      </select>
 
     
     <div class="mb-3">
       <label for="todotitle" class="form-label" >Todo title</label>
       <input type="text" class="form-control" name="todotitle" id="todotitle" aria-describedby="title"
-        value="{{todo[2]}}"  required>
+        value="{{todo[3]}}"  required>
 
 
     </div>
     <div class="mb-3">
       <label for="description" class="form-label">Description</label>
-      <input type="text" class="form-control" name="description" value="{{todo[3]}}">
+      <input type="text" class="form-control" name="description" value="{{todo[4]}}">
     </div>
 
     <button type="update" class="btn btn-outline-dark ">Update</button>

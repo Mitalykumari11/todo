@@ -43,13 +43,15 @@ def submit():
         todotitle = request.form.get('todotitle')
         description = request.form.get('description')
         categories = request.form.get('categories')
+        priority = request.form.get('priority')
         if todotitle and categories:
             current_time = datetime.now()
             formatted_time = current_time.strftime("%Y-%m-%dT%H:%M:%S")
             with engine.connect() as con:
-                rs = con.execute(text(f'INSERT INTO todoitem (categories, title, description, user_id, created, lastUpdated) values ("{categories}", "{todotitle}", "{description}", {uid}, "{formatted_time}", "{formatted_time}");'))
+                rs = con.execute(text(f'INSERT INTO todoitem (categories, priority, title, description, user_id, created, lastUpdated) values ("{categories}", "{priority}" ,"{todotitle}", "{description}", {uid}, "{formatted_time}", "{formatted_time}");'))
                 con.commit()
                 flash('Successfully submit data!', 'green')
+                
         else:
             flash('Invalid data!', 'red')
     return redirect(url_for("home"))
@@ -64,13 +66,18 @@ def home():
         uid = session.get('user_id')
         category = request.args.get('category')
         title = request.args.get('title')
+        priority = request.args.get('priority')
 
-        if title or category:
+        if title or category or priority:
             engine = get_connection()
-            query = f"SELECT id,categories , title, description, created, lastUpdated FROM todoitem where user_id = {uid} and title like '%{title}%' "
+            query = f"SELECT id,categories , priority, title, description, created, lastUpdated FROM todoitem where user_id = {uid} and title like '%{title}%' "
+            if priority:
+                query += f" and priority='{priority}' "
+            
             if category:
                 query += f" and categories='{category}' "
             query += " order by id desc "
+            
             with engine.connect() as con:
                 con.commit()
                 rs = con.execute(text(query) )
@@ -80,10 +87,10 @@ def home():
             engine = get_connection()
             with engine.connect() as con:
                 con.commit()
-                rs = con.execute(text(f"SELECT id,categories , title, description, created, lastUpdated FROM todoitem where user_id = {uid} order by id desc") )
+                rs = con.execute(text(f"SELECT id,categories , priority, title, description, created, lastUpdated FROM todoitem where user_id = {uid} order by id desc") )
             row = rs.fetchall()
               
-        return render_template('index.html', todos=row ,title=title, category=category ) 
+        return render_template('index.html', todos=row ,title=title, category=category , priority=priority) 
 
 
 @app.route('/delete/<id>')
@@ -111,7 +118,7 @@ def update(id):
     engine = get_connection()
     with engine.connect() as con:
             con.commit()
-            rs = con.execute(text(f"SELECT id, categories, title,  description , user_id FROM todoitem where id={id} and user_id = {uid}") )
+            rs = con.execute(text(f"SELECT id,  categories,  priority,  title,  description , user_id FROM todoitem where id={id} and user_id = {uid}") )
     row = rs.fetchall()
     if not row:
         flash('you are not updated')
@@ -131,9 +138,10 @@ def updatesubmit():
         todotitle = request.form.get('todotitle')
         description = request.form.get('description')
         categories = request.form.get('categories')
+        priority = request.form.get('priority')
         if todotitle and categories:
             with engine.connect() as con:
-                rs = con.execute(text(f'update todoitem set  categories = "{categories}", title = "{todotitle}", description = "{description}"  where id = {id} and user_id = {uid}'))
+                rs = con.execute(text(f'update todoitem set   categories = "{categories}", priority = "{priority}", title = "{todotitle}", description = "{description}"  where id = {id} and user_id = {uid}'))
                 con.commit()
             if rs.rowcount > 0:
                 flash('Successfully updated data!', 'green')
