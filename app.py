@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, url_for, redirect, flash, session
 from sqlalchemy import text
-from datetime import datetime
+from datetime import datetime, timedelta, date
+from wtforms import DateField
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -44,11 +45,15 @@ def submit():
         description = request.form.get('description')
         categories = request.form.get('categories')
         priority = request.form.get('priority')
+        due_date = request.form.get('due_date') 
+
         if todotitle and categories:
-            current_time = datetime.now()
-            formatted_time = current_time.strftime("%Y-%m-%dT%H:%M:%S")
+            current_time = date.today()          
+            formatted_time = current_time.isoformat() 
+            
+            
             with engine.connect() as con:
-                rs = con.execute(text(f'INSERT INTO todoitem (categories, priority, title, description, user_id, created, lastUpdated) values ("{categories}", "{priority}" ,"{todotitle}", "{description}", {uid}, "{formatted_time}", "{formatted_time}");'))
+                rs = con.execute(text(f'INSERT INTO todoitem (categories, priority, title, description, user_id, created, lastUpdated, due_date) values ("{categories}", "{priority}" ,"{todotitle}", "{description}", {uid}, "{formatted_time}", "{formatted_time}" ,"{due_date}");'))
                 con.commit()
                 flash('Successfully submit data!', 'green')
                 
@@ -67,10 +72,13 @@ def home():
         category = request.args.get('category')
         title = request.args.get('title')
         priority = request.args.get('priority')
+        due_date = request.args.get('due_date')
+        today = datetime.now().date()
+        tomorrow = today + timedelta(1)
 
         if title or category or priority:
             engine = get_connection()
-            query = f"SELECT id,categories , priority, title, description, created, lastUpdated FROM todoitem where user_id = {uid} and title like '%{title}%' "
+            query = f"SELECT id,categories , priority, title, description, created, lastUpdated, due_date FROM todoitem where user_id = {uid} and title like '%{title}%' "
             if priority:
                 query += f" and priority='{priority}' "
             
@@ -87,10 +95,10 @@ def home():
             engine = get_connection()
             with engine.connect() as con:
                 con.commit()
-                rs = con.execute(text(f"SELECT id,categories , priority, title, description, created, lastUpdated FROM todoitem where user_id = {uid} order by id desc") )
+                rs = con.execute(text(f"SELECT id,categories , priority, title, description, created, lastUpdated, due_date FROM todoitem where user_id = {uid} order by id desc") )
             row = rs.fetchall()
               
-        return render_template('index.html', todos=row ,title=title, category=category , priority=priority) 
+        return render_template('index.html', todos=row ,title=title, category=category , priority=priority, today=today, tomorrow=tomorrow) 
 
 
 @app.route('/delete/<id>')
@@ -114,17 +122,22 @@ def update(id):
     uid = session.get("user_id")
     if not uid:
         return redirect(url_for("login"))
-    
     engine = get_connection()
+    current_time = datetime.now()
+    formatted_time = current_time.strftime("%Y-%m-%d")
+    
     with engine.connect() as con:
             con.commit()
-            rs = con.execute(text(f"SELECT id,  categories,  priority,  title,  description , user_id FROM todoitem where id={id} and user_id = {uid}") )
+            rs = con.execute(text(f"SELECT id,  categories,  priority,  title,  description , due_date,  user_id FROM todoitem where id={id} and user_id = {uid}") )
     row = rs.fetchall()
     if not row:
         flash('you are not updated')
         redirect(url_for('home'))
+
+    todo = row[0]
+    due_date = todo[5].strftime("%Y-%m-%d") if todo[5] else ""
    
-    return render_template('update.html', todo=row[0])
+    return render_template('update.html', todo=row[0], today=formatted_time, due_date= due_date  )
 
 @app.route('/updateSubmit', methods=['GET', 'POST'])
 def updatesubmit():
@@ -139,9 +152,11 @@ def updatesubmit():
         description = request.form.get('description')
         categories = request.form.get('categories')
         priority = request.form.get('priority')
+        due_date = request.form.get('due_date')
+        print(due_date)
         if todotitle and categories:
             with engine.connect() as con:
-                rs = con.execute(text(f'update todoitem set   categories = "{categories}", priority = "{priority}", title = "{todotitle}", description = "{description}"  where id = {id} and user_id = {uid}'))
+                rs = con.execute(text(f'update todoitem set   categories = "{categories}", priority = "{priority}", title = "{todotitle}", description = "{description}", due_date = "{due_date}" where id = {id} and user_id = {uid}'))
                 con.commit()
             if rs.rowcount > 0:
                 flash('Successfully updated data!', 'green')
